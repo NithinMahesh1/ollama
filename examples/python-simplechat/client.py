@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import sqlite3
 
 # NOTE: ollama must be running for this to work, start the ollama app or run `ollama serve`
 model = "llama3"  # TODO: update this for whatever model you wish to use
@@ -32,19 +33,34 @@ def chat(messages):
                 message["content"] = output
                 return message
 
+# def createDB():
 
 def main():
+    # TODO create DB only if a chat.db does not exist in dir
+    # createDB()
     messages = []
 
+    # TODO modify this with Sqlite3:
+    #   Create two tables one for input and one for output
+    #   Table "Output" Columns:
+    #       - model: LLM model being used to add data
+    #       - message: message content in the form of VARCHAR (one whole response from model)
+    #       - date_created: keep track of times we made these requests so we can build timeline for model
+    #   Table "Input" Columns:
+    #       - model: LLM model name that is being sent the user input
+    #       - message: user input message content in the form of VARCHAR as well
+    #       - date_created: time for user inputs to compare to response from models
     while True:
-        user_input = input("Enter a prompt: ")
-        if not user_input:
-            exit()
-        print()
-        messages.append({"role": "user", "content": user_input})
-        message = chat(messages)
-        messages.append(message)
-        print("\n\n")
+        with open(os.path.join('','input.txt','w')) as f:
+            user_input = input("Enter a prompt: ")
+            if not user_input:
+                exit()
+            print(user_input,file=f)
+            print()
+            messages.append({"role": "user", "content": user_input})
+            message = chat(messages)
+            messages.append(message)
+            print("\n\n")
 
 
 if __name__ == "__main__":
