@@ -43,9 +43,11 @@ def main():
     # TODO modify this with Sqlite3:
     #   Create two tables one for input and one for output
     #   Table "Output" Columns:
+    #       - id: primary key
     #       - model: LLM model being used to add data
     #       - message: message content in the form of VARCHAR (one whole response from model)
     #       - date_created: keep track of times we made these requests so we can build timeline for model
+    #       - lineObj: the actual object that is being passed (possibly for training data later)
     #   Table "Input" Columns:
     #       - model: LLM model name that is being sent the user input
     #       - message: user input message content in the form of VARCHAR as well
