@@ -52,17 +52,21 @@ def main():
     #       - model: LLM model name that is being sent the user input
     #       - message: user input message content in the form of VARCHAR as well
     #       - date_created: time for user inputs to compare to response from models
-    count = 0
+    isNotFirstRun = False
     while True:
         with open(os.path.join('','input.txt'),'w') as f:
-            user_input = input("Enter a prompt: ")
-            if not user_input:
-                exit()
-            print(user_input,file=f)
-            print()
-            # Intercept it here
-            count += 1
-            print("This is the count: " +count)
+            # If its the first run then we prompt our model
+            if(isNotFirstRun != True):
+                isNotFirstRun = True
+                print("Initializing model with history .....")
+                user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:[{'role': 'user', 'content': 'Hello chat my name is Nithin'}, {'role': 'assistant', 'content': 'Nice to meet you, Nithin! Welcome to the conversation. What brings you here today? Do you have a specific topic in mind or would you like me to suggest some fun conversations we can have?'}, {'role': 'user', 'content': 'I want to teach you a few things about me for your context with our future conversations. Lets begin with some background about me, I am currently a software engineer at NEAG (The New England Appliance Group) and my past company was Aras Corporation. Some more things I am a .net developer and asp.net web developer.'}]"
+            else:
+                user_input = input("Enter a prompt: ")
+                if not user_input:
+                    exit()
+                print(user_input,file=f)
+                print()
+            
             messages.append({"role": "user", "content": user_input})
             message = chat(messages)
             messages.append(message)
