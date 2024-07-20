@@ -8,10 +8,11 @@ model = "llama3"  # TODO: update this for whatever model you wish to use
 
 
 def chat(messages):
+    print(messages)
     r = requests.post(
         "http://0.0.0.0:11434/api/chat",
         json={"model": model, "messages": messages, "stream": True},
-	stream=True
+        stream=True
     )
     r.raise_for_status()
     output = ""
@@ -33,7 +34,6 @@ def chat(messages):
                 message["content"] = output
                 return message
 
-# def createDB():
 
 def main():
     # TODO create DB only if a chat.db does not exist in dir
@@ -52,13 +52,17 @@ def main():
     #       - model: LLM model name that is being sent the user input
     #       - message: user input message content in the form of VARCHAR as well
     #       - date_created: time for user inputs to compare to response from models
+    count = 0
     while True:
-        with open(os.path.join('','input.txt','w')) as f:
+        with open(os.path.join('','input.txt'),'w') as f:
             user_input = input("Enter a prompt: ")
             if not user_input:
                 exit()
             print(user_input,file=f)
             print()
+            # Intercept it here
+            count += 1
+            print("This is the count: " +count)
             messages.append({"role": "user", "content": user_input})
             message = chat(messages)
             messages.append(message)

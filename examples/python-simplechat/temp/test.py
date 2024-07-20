@@ -7,7 +7,7 @@ arr = ["test","tester","testing","tested", "nithin"]
 cursor = conn.cursor()
 
 cursor.execute('CREATE TABLE IF NOT EXISTS TEST(id INTEGER PRIMARY KEY, content TEXT)')
-# cursor.execute('INSERT INTO INPUT (?)',arr)
+
 i=0
 for item in arr:
     cursor.execute('INSERT INTO TEST VALUES (?,?)',(i,item))
