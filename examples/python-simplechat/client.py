@@ -23,7 +23,13 @@ model = "llama3"  # TODO: update this for whatever model you wish to use
 def chat(messages):
     print("Messages as we go: ")
     print(messages)
-    connection = sqlite3.connect("")
+
+    currDir = os.path.dirname(os.path.abspath(__file__))
+    repoDir = os.path.dirname(currDir)
+    dbPath = os.path.join(repoDir,"db")
+
+    print("Printing out db path: " +dbPath)
+    connection = sqlite3.connect(dbPath + "chat.db")
     cursor = createDBTables(connection)
 
     i=0
@@ -83,10 +89,12 @@ def main():
     repoDir = os.path.dirname(currDir)
     dbPath = os.path.join(repoDir,"db")
 
+    print("Printing DB path: " +dbPath)
+
     connection = sqlite3.connect()
     cursor = connection.cursor()
 
-    if(os.path.exists(dbPath)):
+    if(os.path.isfile(dbPath + "chat.db")):
         cursor.execute('SELECT jsonObj from User')
         userData = cursor.fetchall()
 
