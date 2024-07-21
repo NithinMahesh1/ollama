@@ -2,19 +2,20 @@ import os
 import json
 import requests
 import sqlite3
+import json
+from datetime import datetime
 
 # NOTE: ollama must be running for this to work, start the ollama app or run `ollama serve`
 model = "llama3"  # TODO: update this for whatever model you wish to use
 
 # TODO modify this with Sqlite3:
 #   Create two tables one for input and one for output
-#   Table "Output" Columns:
+#   Table "Assistant" Columns:
 #       - id: primary key
 #       - model: LLM model being used to add data
 #       - message: message content in the form of VARCHAR (one whole response from model)
 #       - date_created: keep track of times we made these requests so we can build timeline for model
-#       - lineObj: the actual object that is being passed (possibly for training data later)
-#   Table "Input" Columns:
+#   Table "User" Columns:
 #       - model: LLM model name that is being sent the user input
 #       - message: user input message content in the form of VARCHAR as well
 #       - date_created: time for user inputs to compare to response from models
@@ -22,6 +23,23 @@ model = "llama3"  # TODO: update this for whatever model you wish to use
 def chat(messages):
     print("Messages as we go: ")
     print(messages)
+    connection = sqlite3.connect("")
+    cursor = createDBTables(connection)
+
+    i=0
+    for message in messages:
+        # example message: {'role': 'user', 'content': 'Hello chat my name is Nithin'}, 
+        current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        parseJSON = json.loads(message)
+        if(parseJSON["role"] == "user"):
+            # insert to user table
+            cursor.execute('INSERT INTO User VALUES(?,?,?,?,?)',(i,model,parseJSON["content"],message,current_date))
+        if(parseJSON["assistant"] == "assistant"):
+            # insert to assistant table
+            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?,?)',(i,model,parseJSON["content"],message,current_date))
+        i += 1
+        connection.commit()
+
     r = requests.post(
         "http://0.0.0.0:11434/api/chat",
         json={"model": model, "messages": messages, "stream": True},
@@ -44,11 +62,40 @@ def chat(messages):
         if body.get("done", False):
             message["content"] = output
             return message
+        
+
+def createDBTables(connection):
+    # After creating DB obj, create tables and start inserting table data
+    cursor = connection.cursor()
+
+    # Mode input table "Assistant"
+    cursor.execute('CREATE TABLE IF NOT EXISTS Assistant(id INTEGER PRIMARY KEY, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
+
+    # User input table "User"
+    cursor.execute('CREATE TABLE IF NOT EXISTS User(id INTEGER PRIMARY KEY, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
+
+    return cursor
 
 
 def main():
-    # TODO create DB only if a chat.db does not exist in dir
-    # createDB()
+    # Connect to chat.db if it exists
+    connection = sqlite3.connect()
+    cursor = connection.cursor()
+
+    cursor.execute('SELECT jsonObj from User')
+    userData = cursor.fetchall()
+
+    cursor.execute('SELECT jsonObj from Assistant')
+    assistantData = cursor.fetchall()
+
+    for i in range(0,len(userData),1):
+        # Append user obj
+        buildStr = buildStr + userData
+
+        # Append assistant obj
+        if(i <= len(assistantData)):
+            buildStr = buildStr + assistantData
+        
     messages = []
     isNotFirstRun = False
     while True:
@@ -56,7 +103,11 @@ def main():
         if(isNotFirstRun != True):
             isNotFirstRun = True
             print("Initializing model with history .....")
-            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:[{'role': 'user', 'content': 'Hello chat my name is Nithin'}, {'role': 'assistant', 'content': 'Nice to meet you, Nithin! Welcome to the conversation. What brings you here today? Do you have a specific topic in mind or would you like me to suggest some fun conversations we can have?'}, {'role': 'user', 'content': 'I want to teach you a few things about me for your context with our future conversations. Lets begin with some background about me, I am currently a software engineer at NEAG (The New England Appliance Group) and my past company was Aras Corporation. Some more things I am a .net developer and asp.net web developer.'}]"
+            # Here we add logic to append and format data we prompt from chat history to llama
+            # We need to make two select statement table calls to user and assistant tables
+            # Then pass the json objs we store to the string we pass to user_input
+            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +buildStr
+            print("Memory Updated .....")
         else:
             user_input = input("Enter a prompt: ")
             if not user_input:
