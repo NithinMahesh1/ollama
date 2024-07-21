@@ -25,11 +25,11 @@ def chat(messages):
     print(messages)
 
     currDir = os.path.dirname(os.path.abspath(__file__))
-    repoDir = os.path.dirname(currDir)
-    dbPath = os.path.join(repoDir,"db")
+    dbPath = os.path.join(currDir,"db/chat.db")
 
-    print("Printing out db path: " +dbPath)
-    connection = sqlite3.connect(dbPath + "chat.db")
+    print("Printing DB path: " +dbPath)
+
+    connection = sqlite3.connect(dbPath)
     cursor = createDBTables(connection)
 
     i=0
@@ -86,15 +86,14 @@ def createDBTables(connection):
 def main():
     # Connect to chat.db if it exists
     currDir = os.path.dirname(os.path.abspath(__file__))
-    repoDir = os.path.dirname(currDir)
-    dbPath = os.path.join(repoDir,"db")
+    dbPath = os.path.join(currDir,"db/chat.db")
 
     print("Printing DB path: " +dbPath)
 
-    connection = sqlite3.connect()
-    cursor = connection.cursor()
-
-    if(os.path.isfile(dbPath + "chat.db")):
+    if(os.path.isfile(dbPath)):
+        connection = sqlite3.connect(dbPath)
+        cursor = connection.cursor()
+        
         cursor.execute('SELECT jsonObj from User')
         userData = cursor.fetchall()
 
