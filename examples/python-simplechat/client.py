@@ -79,22 +79,27 @@ def createDBTables(connection):
 
 def main():
     # Connect to chat.db if it exists
+    currDir = os.path.dirname(os.path.abspath(__file__))
+    repoDir = os.path.dirname(currDir)
+    dbPath = os.path.join(repoDir,"db")
+
     connection = sqlite3.connect()
     cursor = connection.cursor()
 
-    cursor.execute('SELECT jsonObj from User')
-    userData = cursor.fetchall()
+    if(os.path.exists(dbPath)):
+        cursor.execute('SELECT jsonObj from User')
+        userData = cursor.fetchall()
 
-    cursor.execute('SELECT jsonObj from Assistant')
-    assistantData = cursor.fetchall()
+        cursor.execute('SELECT jsonObj from Assistant')
+        assistantData = cursor.fetchall()
 
-    for i in range(0,len(userData),1):
-        # Append user obj
-        buildStr = buildStr + userData
+        for i in range(0,len(userData),1):
+            # Append user obj
+            buildStr = buildStr + userData
 
-        # Append assistant obj
-        if(i <= len(assistantData)):
-            buildStr = buildStr + assistantData
+            # Append assistant obj
+            if(i <= len(assistantData)):
+                buildStr = buildStr + assistantData
         
     messages = []
     isNotFirstRun = False
