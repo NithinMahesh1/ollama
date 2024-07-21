@@ -87,6 +87,7 @@ def main():
     # Connect to chat.db if it exists
     currDir = os.path.dirname(os.path.abspath(__file__))
     dbPath = os.path.join(currDir,"db/chat.db")
+    buildStr = ""
 
     print("Printing DB path: " +dbPath)
 
