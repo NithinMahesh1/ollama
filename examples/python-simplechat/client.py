@@ -36,13 +36,12 @@ def chat(messages):
     for message in messages:
         # example message: {'role': 'user', 'content': 'Hello chat my name is Nithin'}, 
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        parseJSON = json.loads(message)
-        if(parseJSON["role"] == "user"):
+        if(message["role"] == "user"):
             # insert to user table
-            cursor.execute('INSERT INTO User VALUES(?,?,?,?,?)',(i,model,parseJSON["content"],message,current_date))
-        if(parseJSON["assistant"] == "assistant"):
+            cursor.execute('INSERT INTO User VALUES(?,?,?,?,?)',(i,model,message["content"],str(message),current_date))
+        if(message["role"] == "assistant"):
             # insert to assistant table
-            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?,?)',(i,model,parseJSON["content"],message,current_date))
+            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?,?)',(i,model,message["content"],str(message),current_date))
         i += 1
         connection.commit()
 
