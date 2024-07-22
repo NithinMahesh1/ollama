@@ -104,6 +104,8 @@ def main():
             # Append assistant obj
             if(i <= len(assistantData)-1):
                 buildStr = buildStr + str(assistantData[i])
+            
+            cleanData = buildStr.replace("\\","")
 
     messages = []
     isNotFirstRun = False
@@ -115,7 +117,7 @@ def main():
             # Here we add logic to append and format data we prompt from chat history to llama
             # We need to make two select statement table calls to user and assistant tables
             # Then pass the json objs we store to the string we pass to user_input
-            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +buildStr
+            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +cleanData
             print("Memory Updated .....")
         else:
             user_input = input("Enter a prompt: ")
