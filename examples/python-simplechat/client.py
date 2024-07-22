@@ -25,10 +25,7 @@ def chat(messages):
     print(messages)
 
     currDir = os.path.dirname(os.path.abspath(__file__))
-    repoDir = os.path.dirname(currDir)
-    repoDir = repoDir + "python-simplechat/db"
-    dbPath = os.path.join(repoDir,"chat.db")
-
+    dbPath = os.path.join(currDir,"db/chat.db")
     print("Printing DB path: " +dbPath)
 
     connection = sqlite3.connect(dbPath)
@@ -40,10 +37,10 @@ def chat(messages):
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if(message["role"] == "user"):
             # insert to user table
-            cursor.execute('INSERT INTO User VALUES(?,?,?,?,?)',(i,model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO User VALUES(?,?,?,?)',(model,message["content"],str(message),current_date))
         if(message["role"] == "assistant"):
             # insert to assistant table
-            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?,?)',(i,model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?)',(model,message["content"],str(message),current_date))
         i += 1
         connection.commit()
 
@@ -76,10 +73,10 @@ def createDBTables(connection):
     cursor = connection.cursor()
 
     # Mode input table "Assistant"
-    cursor.execute('CREATE TABLE IF NOT EXISTS Assistant(id INTEGER PRIMARY KEY, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS Assistant(id INTEGER PRIMARY KEY AUTOINCREMENT, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
 
     # User input table "User"
-    cursor.execute('CREATE TABLE IF NOT EXISTS User(id INTEGER PRIMARY KEY, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS User(id INTEGER PRIMARY KEY AUTOINCREMENT, model TEXT, content TEXT, jsonObj TEXT, date_created TEXT)')
 
     return cursor
 
@@ -89,8 +86,6 @@ def main():
     currDir = os.path.dirname(os.path.abspath(__file__))
     dbPath = os.path.join(currDir,"db/chat.db")
     buildStr = ""
-
-    print("Printing DB path: " +dbPath)
 
     if(os.path.isfile(dbPath)):
         connection = sqlite3.connect(dbPath)
