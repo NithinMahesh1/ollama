@@ -37,10 +37,10 @@ def chat(messages):
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if(message["role"] == "user"):
             # insert to user table
-            cursor.execute('INSERT INTO User VALUES(?,?,?,?)',(model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO User VALUES(null,?,?,?,?)',(model,message["content"],str(message),current_date))
         if(message["role"] == "assistant"):
             # insert to assistant table
-            cursor.execute('INSERT INTO Assistant VALUES(?,?,?,?)',(model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO Assistant VALUES(null,?,?,?,?)',(model,message["content"],str(message),current_date))
         i += 1
         connection.commit()
 
