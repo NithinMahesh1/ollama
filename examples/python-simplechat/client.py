@@ -99,12 +99,12 @@ def main():
 
         for i in range(0,len(userData),1):
             # Append user obj
-            buildStr = buildStr + userData
+            buildStr = buildStr + str(userData[i])
 
             # Append assistant obj
-            if(i <= len(assistantData)):
-                buildStr = buildStr + assistantData
-        
+            if(i <= len(assistantData)-1):
+                buildStr = buildStr + str(assistantData[i])
+
     messages = []
     isNotFirstRun = False
     while True:
