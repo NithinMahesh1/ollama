@@ -25,7 +25,9 @@ def chat(messages):
     print(messages)
 
     currDir = os.path.dirname(os.path.abspath(__file__))
-    dbPath = os.path.join(currDir,"db/chat.db")
+    repoDir = os.path.dirname(currDir)
+    repoDir = repoDir + "db"
+    dbPath = os.path.join(repoDir,"chat.db")
 
     print("Printing DB path: " +dbPath)
 
