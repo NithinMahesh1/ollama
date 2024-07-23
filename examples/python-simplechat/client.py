@@ -26,7 +26,6 @@ def chat(messages):
 
     currDir = os.path.dirname(os.path.abspath(__file__))
     dbPath = os.path.join(currDir,"db/chat.db")
-    print("Printing DB path: " +dbPath)
 
     connection = sqlite3.connect(dbPath)
     cursor = createDBTables(connection)
@@ -52,6 +51,7 @@ def chat(messages):
     r.raise_for_status()
     output = ""
 
+    print("Memory Updated ....")
     for line in r.iter_lines():
         body = json.loads(line)
         if "error" in body:
@@ -86,6 +86,7 @@ def main():
     currDir = os.path.dirname(os.path.abspath(__file__))
     dbPath = os.path.join(currDir,"db/chat.db")
     buildStr = ""
+    cleanData = ""
 
     if(os.path.isfile(dbPath)):
         connection = sqlite3.connect(dbPath)
@@ -105,6 +106,8 @@ def main():
             if(i <= len(assistantData)-1):
                 buildStr = buildStr + str(assistantData[i])
 
+            cleanData = buildStr.replace("\\","")
+
     messages = []
     isNotFirstRun = False
     while True:
@@ -115,8 +118,7 @@ def main():
             # Here we add logic to append and format data we prompt from chat history to llama
             # We need to make two select statement table calls to user and assistant tables
             # Then pass the json objs we store to the string we pass to user_input
-            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +buildStr
-            print("Memory Updated .....")
+            user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +cleanData
         else:
             user_input = input("Enter a prompt: ")
             if not user_input:
