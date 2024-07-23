@@ -34,13 +34,14 @@ def chat(messages):
     for message in messages:
         # example message: {'role': 'user', 'content': 'Hello chat my name is Nithin'}, 
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        message = message.replace("\\","")
+        obj = str(message).replace("\\","")
+        content = str(message["content"]).replace("\\","")
         if(message["role"] == "user"):
             # insert to user table
-            cursor.execute('INSERT INTO User VALUES(null,?,?,?,?)',(model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO User VALUES(null,?,?,?,?)',(model,content,obj,current_date))
         if(message["role"] == "assistant"):
             # insert to assistant table
-            cursor.execute('INSERT INTO Assistant VALUES(null,?,?,?,?)',(model,message["content"],str(message),current_date))
+            cursor.execute('INSERT INTO Assistant VALUES(null,?,?,?,?)',(model,content,obj,current_date))
         i += 1
         connection.commit()
 
