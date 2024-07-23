@@ -34,6 +34,7 @@ def chat(messages):
     for message in messages:
         # example message: {'role': 'user', 'content': 'Hello chat my name is Nithin'}, 
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        message = message.replace("\\","")
         if(message["role"] == "user"):
             # insert to user table
             cursor.execute('INSERT INTO User VALUES(null,?,?,?,?)',(model,message["content"],str(message),current_date))
