@@ -6,19 +6,17 @@ import json
 from datetime import datetime
 
 # NOTE: ollama must be running for this to work, start the ollama app or run `ollama serve`
-model = "llama3.1"  # TODO: update this for whatever model you wish to use
+# unless ollama is running on Daemon or Service
+model = "llama3.1"
 
-# TODO modify this with Sqlite3:
-#   Create two tables one for input and one for output
+#   Sqlite3 tables one for User input and one for Model "assistant" output
 #   Table "Assistant" Columns:
 #       - id: primary key
 #       - model: LLM model being used to add data
-#       - message: message content in the form of VARCHAR (one whole response from model)
+#       - content: message content as VARCHAR, only contains actual content
+#       - jsonObj: 
 #       - date_created: keep track of times we made these requests so we can build timeline for model
-#   Table "User" Columns:
-#       - model: LLM model name that is being sent the user input
-#       - message: user input message content in the form of VARCHAR as well
-#       - date_created: time for user inputs to compare to response from models
+#   Table "User" Columns: mimics "Assistant" table, but we separate data into two tables for future training
 
 def chat(messages):
     print("Messages as we go: ")
@@ -68,6 +66,8 @@ def chat(messages):
         if body.get("done", False):
             message["content"] = output
             return message
+
+    print("--------------------------------------------------------------------")
         
 
 def createDBTables(connection):
@@ -122,6 +122,7 @@ def main():
             # Then pass the json objs we store to the string we pass to user_input
             user_input = "Hi Chat I am going to begin out chat with some json information from our previous chats so you can remember our conversations. Let me begin out conversation by feeding you some json about out last conversation:" +cleanData
         else:
+            print("--------------------------------------------------------------------")
             user_input = input("Enter a prompt: ")
             if not user_input:
                 exit()
