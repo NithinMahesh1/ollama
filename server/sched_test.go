@@ -3,25 +3,25 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
-	"fmt"
+	"errors"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ollama/ollama/api"
 	"github.com/ollama/ollama/app/lifecycle"
-	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/format"
 	"github.com/ollama/ollama/gpu"
 	"github.com/ollama/ollama/llm"
-	"github.com/stretchr/testify/require"
 )
 
-func init() {
+func TestMain(m *testing.M) {
 	os.Setenv("OLLAMA_DEBUG", "1")
 	lifecycle.InitLogging()
+	os.Exit(m.Run())
 }
 
 func TestInitScheduler(t *testing.T) {
@@ -48,7 +48,7 @@ func TestLoad(t *testing.T) {
 	}
 	// Fail to load model first
 	s.newServerFn = func(gpus gpu.GpuInfoList, model string, ggml *llm.GGML, adapters []string, projectors []string, opts api.Options, numParallel int) (llm.LlamaServer, error) {
-		return nil, fmt.Errorf("something failed to load model blah")
+		return nil, errors.New("something failed to load model blah")
 	}
 	gpus := gpu.GpuInfoList{}
 	s.load(req, ggml, gpus, 0)
@@ -77,7 +77,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	req.model.ModelPath = "dummy_model_path"
-	server.waitResp = fmt.Errorf("wait failure")
+	server.waitResp = errors.New("wait failure")
 	s.load(req, ggml, gpus, 0)
 	select {
 	case err := <-req.errCh:
@@ -115,10 +115,8 @@ func newScenarioRequest(t *testing.T, ctx context.Context, modelName string, est
 	require.NoError(t, err)
 	defer f.Close()
 
-	gguf := llm.NewGGUFV3(binary.LittleEndian)
-	err = gguf.Encode(f, llm.KV{
+	require.NoError(t, llm.WriteGGUF(f, llm.KV{
 		"general.architecture":          "llama",
-		"general.name":                  "name",
 		"llama.context_length":          uint32(32),
 		"llama.embedding_length":        uint32(4096),
 		"llama.block_count":             uint32(1),
@@ -130,7 +128,7 @@ func newScenarioRequest(t *testing.T, ctx context.Context, modelName string, est
 	}, []llm.Tensor{
 		{Name: "blk.0.attn.weight", Kind: uint32(0), Offset: uint64(0), Shape: []uint64{1, 1, 1, 1}, WriterTo: bytes.NewReader(make([]byte, 32))},
 		{Name: "output.weight", Kind: uint32(0), Offset: uint64(0), Shape: []uint64{1, 1, 1, 1}, WriterTo: bytes.NewReader(make([]byte, 32))},
-	})
+	}))
 	require.NoError(t, err)
 
 	fname := f.Name()
@@ -272,7 +270,7 @@ func TestRequestsMultipleLoadedModels(t *testing.T) {
 	c.req.opts.NumGPU = 0                                       // CPU load, will be allowed
 	d := newScenarioRequest(t, ctx, "ollama-model-3c", 30, nil) // Needs prior unloaded
 
-	envconfig.MaxRunners = 1
+	t.Setenv("OLLAMA_MAX_LOADED_MODELS", "1")
 	s.newServerFn = a.newServer
 	slog.Info("a")
 	s.pendingReqCh <- a.req
@@ -291,7 +289,7 @@ func TestRequestsMultipleLoadedModels(t *testing.T) {
 	require.Len(t, s.loaded, 1)
 	s.loadedMu.Unlock()
 
-	envconfig.MaxRunners = 0
+	t.Setenv("OLLAMA_MAX_LOADED_MODELS", "0")
 	s.newServerFn = b.newServer
 	slog.Info("b")
 	s.pendingReqCh <- b.req
@@ -356,13 +354,13 @@ func TestRequestsMultipleLoadedModels(t *testing.T) {
 }
 
 func TestGetRunner(t *testing.T) {
-	ctx, done := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, done := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer done()
 
 	a := newScenarioRequest(t, ctx, "ollama-model-1a", 10, &api.Duration{Duration: 2 * time.Millisecond})
 	b := newScenarioRequest(t, ctx, "ollama-model-1b", 10, &api.Duration{Duration: 2 * time.Millisecond})
 	c := newScenarioRequest(t, ctx, "ollama-model-1c", 10, &api.Duration{Duration: 2 * time.Millisecond})
-	envconfig.MaxQueuedRequests = 1
+	t.Setenv("OLLAMA_MAX_QUEUE", "1")
 	s := InitScheduler(ctx)
 	s.getGpuFn = getGpuFn
 	s.getCpuFn = getCpuFn
@@ -397,7 +395,7 @@ func TestGetRunner(t *testing.T) {
 	slog.Info("c")
 	successCh1c, errCh1c := s.GetRunner(c.ctx, c.req.model, c.req.opts, c.req.sessionDuration)
 	// Starts in pending channel, then should be quickly processsed to return an error
-	time.Sleep(20 * time.Millisecond) // Long enough for the "a" model to expire and unload
+	time.Sleep(50 * time.Millisecond) // Long enough for the "a" model to expire and unload
 	require.Empty(t, successCh1c)
 	s.loadedMu.Lock()
 	require.Empty(t, s.loaded)
@@ -406,6 +404,52 @@ func TestGetRunner(t *testing.T) {
 	err = <-errCh1c
 	require.Contains(t, err.Error(), "bad path")
 	b.ctxDone()
+}
+
+func TestExpireRunner(t *testing.T) {
+	ctx, done := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer done()
+	s := InitScheduler(ctx)
+	req := &LlmRequest{
+		ctx:             ctx,
+		model:           &Model{ModelPath: "foo"},
+		opts:            api.DefaultOptions(),
+		successCh:       make(chan *runnerRef, 1),
+		errCh:           make(chan error, 1),
+		sessionDuration: &api.Duration{Duration: 2 * time.Minute},
+	}
+
+	var ggml *llm.GGML
+	gpus := gpu.GpuInfoList{}
+	server := &mockLlm{estimatedVRAM: 10, estimatedVRAMByGPU: map[string]uint64{}}
+	s.newServerFn = func(gpus gpu.GpuInfoList, model string, ggml *llm.GGML, adapters []string, projectors []string, opts api.Options, numParallel int) (llm.LlamaServer, error) {
+		return server, nil
+	}
+	s.load(req, ggml, gpus, 0)
+
+	select {
+	case err := <-req.errCh:
+		if err != nil {
+			t.Fatalf("expected no errors when loading, got '%s'", err.Error())
+		}
+	case resp := <-req.successCh:
+		s.loadedMu.Lock()
+		if resp.refCount != uint(1) || len(s.loaded) != 1 {
+			t.Fatalf("expected a model to be loaded")
+		}
+		s.loadedMu.Unlock()
+	}
+
+	s.expireRunner(&Model{ModelPath: "foo"})
+
+	s.finishedReqCh <- req
+	s.processCompleted(ctx)
+
+	s.loadedMu.Lock()
+	if len(s.loaded) != 0 {
+		t.Fatalf("expected model to be unloaded")
+	}
+	s.loadedMu.Unlock()
 }
 
 // TODO - add one scenario that triggers the bogus finished event with positive ref count
@@ -603,7 +647,7 @@ func TestNeedsReload(t *testing.T) {
 	resp = runner.needsReload(ctx, req)
 	require.True(t, resp)
 	req.opts.NumBatch = runner.Options.NumBatch
-	llm.pingResp = fmt.Errorf("foo")
+	llm.pingResp = errors.New("foo")
 	resp = runner.needsReload(ctx, req)
 	require.True(t, resp)
 	llm.pingResp = nil
@@ -666,12 +710,51 @@ func TestAlreadyCanceled(t *testing.T) {
 	require.Empty(t, scenario1a.req.successCh)
 }
 
+func TestHomogeneousGPUs(t *testing.T) {
+	ctx, done := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer done()
+	s := InitScheduler(ctx)
+
+	s.getGpuFn = func() gpu.GpuInfoList {
+		// Set memory values to require the model to be spread
+		gpus := []gpu.GpuInfo{
+			{Library: "cuda"},
+			{Library: "rocm"},
+		}
+		gpus[0].TotalMemory = 1 * format.GibiByte
+		gpus[0].FreeMemory = 256 * format.MebiByte
+		gpus[1].TotalMemory = 1 * format.GibiByte
+		gpus[1].FreeMemory = 256 * format.MebiByte
+		return gpus
+	}
+	s.getCpuFn = getCpuFn
+	a := newScenarioRequest(t, ctx, "ollama-model-1", 10, &api.Duration{Duration: 5 * time.Millisecond})
+	s.newServerFn = func(gpus gpu.GpuInfoList, model string, ggml *llm.GGML, adapters []string, projectors []string, opts api.Options, numParallel int) (llm.LlamaServer, error) {
+		require.Len(t, gpus, 1)
+		return a.newServer(gpus, model, ggml, adapters, projectors, opts, numParallel)
+	}
+	slog.Info("a")
+	s.pendingReqCh <- a.req
+	require.Len(t, s.pendingReqCh, 1)
+	s.Run(ctx)
+	select {
+	case resp := <-a.req.successCh:
+		require.Equal(t, resp.llama, a.srv)
+		require.Empty(t, s.pendingReqCh)
+		require.Empty(t, a.req.errCh)
+	case err := <-a.req.errCh:
+		t.Fatal(err.Error())
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	}
+}
+
 type mockLlm struct {
 	pingResp           error
 	waitResp           error
 	completionResp     error
-	embedResp          [][]float32
-	embedRespErr       error
+	embeddingResp      []float32
+	embeddingRespErr   error
 	tokenizeResp       []int
 	tokenizeRespErr    error
 	detokenizeResp     string
@@ -688,15 +771,19 @@ func (s *mockLlm) WaitUntilRunning(ctx context.Context) error { return s.waitRes
 func (s *mockLlm) Completion(ctx context.Context, req llm.CompletionRequest, fn func(llm.CompletionResponse)) error {
 	return s.completionResp
 }
-func (s *mockLlm) Embed(ctx context.Context, input []string) ([][]float32, error) {
-	return s.embedResp, s.embedRespErr
+
+func (s *mockLlm) Embedding(ctx context.Context, input string) ([]float32, error) {
+	return s.embeddingResp, s.embeddingRespErr
 }
+
 func (s *mockLlm) Tokenize(ctx context.Context, content string) ([]int, error) {
 	return s.tokenizeResp, s.tokenizeRespErr
 }
+
 func (s *mockLlm) Detokenize(ctx context.Context, tokens []int) (string, error) {
 	return s.detokenizeResp, s.detonekizeRespErr
 }
+
 func (s *mockLlm) Close() error {
 	s.closeCalled = true
 	return s.closeResp
