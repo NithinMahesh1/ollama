@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 # NOTE: ollama must be running for this to work, start the ollama app or run `ollama serve`
-model = "llama3.2"  # TODO: update this for whatever model you wish to use
+model = "llama3.1"  # TODO: update this for whatever model you wish to use
 
 #   Sqlite3 tables one for User input and one for Model "assistant" output
 #   Table "Assistant" Columns:
@@ -18,8 +18,8 @@ model = "llama3.2"  # TODO: update this for whatever model you wish to use
 #   Table "User" Columns: mimics "Assistant" table, but we separate data into two tables for future training
 
 def chat(messages):
-    print("Messages as we go: ")
-    print(messages)
+    # print("Messages as we go: ")
+    # print(messages)
 
     currDir = os.path.dirname(os.path.abspath(__file__))
     dbPath = os.path.join(currDir,"db/chat.db")
